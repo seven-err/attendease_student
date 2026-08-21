@@ -2,9 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" href="/src/assets/attendease.png" />
+    <link rel="shortcut icon" href="/src/assets/attendease.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/attendease.png" />
+    <link rel="apple-touch-icon" href="/src/assets/attendease.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#8b0000" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -13,12 +14,16 @@
     <meta name="apple-mobile-web-app-title" content="AttendEase" />
     <title>AttendEase - Student Portal</title>
     <style>
-      /* Initial shell styling before bundle loads */
       html, body {
         margin: 0;
         padding: 0;
         background-color: #f5f5f4;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      * {
+        box-sizing: border-box;
+        transition: none !important;
       }
       #root {
         min-height: 100vh;
@@ -26,65 +31,109 @@
         display: flex;
         flex-direction: column;
       }
-      .boot-loader {
+      /* Shimmer Animation */
+      @keyframes skeletonShimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      .sk-shimmer {
+        background: linear-gradient(90deg, #f4f4f5 25%, #e4e4e7 50%, #f4f4f5 75%);
+        background-size: 200% 100%;
+        animation: skeletonShimmer 1.5s infinite ease-in-out;
+      }
+      .skeleton-shell {
+        display: flex;
+        flex-direction: column;
+        max-width: 480px;
+        width: 100%;
+        margin: 0 auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 24px 16px;
+        gap: 18px;
+      }
+      .sk-hero {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        min-height: 100dvh;
-        padding: 24px;
-        box-sizing: border-box;
-        text-align: center;
+        gap: 10px;
+        padding: 12px 0 6px;
       }
-      .boot-logo {
-        width: 72px;
-        height: 72px;
-        border-radius: 18px;
-        box-shadow: 0 4px 16px rgba(139, 0, 0, 0.2);
-        margin-bottom: 16px;
+      .sk-logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
       }
-      .boot-title {
-        color: #8b0000;
-        font-size: 24px;
-        font-weight: 700;
-        margin: 0 0 6px 0;
-        letter-spacing: -0.5px;
+      .sk-title {
+        width: 140px;
+        height: 24px;
+        border-radius: 6px;
       }
-      .boot-subtitle {
-        color: #71717a;
-        font-size: 13px;
-        margin: 0 0 24px 0;
+      .sk-subtitle {
+        width: 220px;
+        height: 14px;
+        border-radius: 4px;
       }
-      .boot-spinner {
-        width: 28px;
-        height: 28px;
-        border: 3px solid #e4e4e7;
-        border-top-color: #8b0000;
-        border-radius: 50%;
-        animation: bootSpin 0.8s linear infinite;
+      .sk-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        background: #e4e4e7;
+        padding: 4px;
+        border-radius: 12px;
       }
-      @keyframes bootSpin {
-        to { transform: rotate(360deg); }
+      .sk-tab {
+        height: 40px;
+        border-radius: 8px;
+      }
+      .sk-card {
+        background: #ffffff;
+        border: 1px solid #e4e4e7;
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      .sk-viewport {
+        width: 100%;
+        aspect-ratio: 1;
+        max-width: 280px;
+        border-radius: 12px;
+      }
+      .sk-btn {
+        width: 100%;
+        height: 44px;
+        border-radius: 10px;
       }
     </style>
     <script>
-      // Self-healing legacy cache eviction for previous service worker versions
-      if (typeof window !== 'undefined' && 'caches' in window) {
-        var legacyCaches = ['attendease-student-shell-v1', 'attendease-student-shell-v2'];
-        legacyCaches.forEach(function(c) {
-          caches.delete(c);
-        });
-      }
+      // Global error handler to immediately show any startup failure on screen
+      window.addEventListener('error', function(e) {
+        var el = document.getElementById('boot-skeleton-fallback');
+        if (el) {
+          el.innerHTML = '<div style="background:#ffffff;border:1px solid #fee2e2;border-radius:16px;padding:24px;text-align:center;max-width:360px;margin:40px auto;"><img src="/attendease.png" width="56" height="56" style="border-radius:14px;margin-bottom:12px;" /><h2 style="color:#8b0000;margin:0 0 8px;font-size:18px;">AttendEase Notice</h2><div style="color:#991b1b;background:#fee2e2;padding:12px;border-radius:8px;font-size:12px;margin-bottom:16px;word-break:break-word;font-family:monospace;text-align:left;">' + (e.message || 'Script initialization error') + '</div><button onclick="location.reload()" style="background:#8b0000;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Refresh Page</button></div>';
+        }
+      });
     </script>
   </head>
   <body>
     <div id="root">
-      <div class="boot-loader" id="boot-loader-fallback">
-        <img src="/attendease.png" alt="AttendEase" class="boot-logo" />
-        <h1 class="boot-title">AttendEase</h1>
-        <p class="boot-subtitle">Student &amp; Employee Attendance Portal</p>
-        <div class="boot-spinner" aria-label="Loading AttendEase..."></div>
+      <div class="skeleton-shell" id="boot-skeleton-fallback">
+        <div class="sk-hero">
+          <div class="sk-logo sk-shimmer"></div>
+          <div class="sk-title sk-shimmer"></div>
+          <div class="sk-subtitle sk-shimmer"></div>
+        </div>
+        <div class="sk-tabs">
+          <div class="sk-tab sk-shimmer"></div>
+          <div class="sk-tab" style="background:#f4f4f5;"></div>
+        </div>
+        <div class="sk-card">
+          <div class="sk-viewport sk-shimmer"></div>
+          <div class="sk-btn sk-shimmer"></div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

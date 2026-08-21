@@ -3,8 +3,14 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import './index.css';
 
-// vite-plugin-pwa handles SW registration via registerSW.js injected in index.html.
-// We do NOT call registerServiceWorker() here to avoid double-registration conflicts.
+// Aggressive cache & SW synchronization for PWA reliability
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) {
+      reg.update().catch(() => {});
+    }
+  }).catch(() => {});
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -56,10 +62,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+}
