@@ -8,25 +8,29 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      // Use the existing manifest from public/ rather than generating a new one
+      // Use the existing manifest from public/
       manifest: false,
-      // Workbox config — mirrors the hand-written sw.js security constraints
       workbox: {
         // Precache all build output (HTML, hashed JS/CSS, icons)
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,ico,woff,woff2}'],
         // NEVER cache Supabase API calls
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/rest\//, /^\/rpc\//, /supabase\.co/],
+        // Clean up old Workbox and hand-written SW caches automatically
+        cleanupOutdatedCaches: true,
+        // Skip waiting so new SW takes over immediately (no stale page served)
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
-            // Same-origin static assets — stale-while-revalidate (mirrors old SW logic)
-            urlPattern: ({ url, sameOrigin }) =>
+            // Same-origin static assets — stale-while-revalidate
+            urlPattern: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
               sameOrigin &&
               !url.pathname.startsWith('/rest/') &&
               !url.pathname.startsWith('/rpc/'),
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'attendease-student-shell-v2',
+              cacheName: 'attendease-student-shell-v3',
               expiration: {
                 maxEntries: 60,
                 maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -36,7 +40,7 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: false, // Don't activate SW in dev (avoid conflicts with hot reload)
+        enabled: false, // Keep SW off in dev
       },
     }),
   ],

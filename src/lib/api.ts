@@ -1,4 +1,4 @@
-import { supabase } from './supabase.ts';
+import { supabase } from './supabase';
 import type {
   CreateSessionResponse,
   GetTodayAttendanceResponse,
