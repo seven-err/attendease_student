@@ -1,14 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4f46e5" />
-      <stop offset="100%" stop-color="#818cf8" />
-    </linearGradient>
+    <clipPath id="roundedCorners">
+      <rect width="512" height="512" rx="112" ry="112" />
+    </clipPath>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#0f172a" />
-  <rect x="32" y="32" width="448" height="448" rx="96" fill="#1e293b" stroke="rgba(255,255,255,0.08)" stroke-width="4" />
-  <g transform="translate(128, 128)">
-    <path d="M128 0 L158 98 L256 128 L158 158 L128 256 L98 158 L0 128 L98 98 Z" fill="url(#brandGradient)" />
-    <circle cx="128" cy="128" r="32" fill="#ffffff" opacity="0.9" />
-  </g>
+
+  <!-- Background: AttendEase maroon -->
+  <rect width="512" height="512" rx="112" fill="#8b0000" />
+
+  <!-- QR corner brackets (top-left) -->
+  <rect x="68" y="68" width="64" height="16" fill="white"/>
+  <rect x="68" y="68" width="16" height="64" fill="white"/>
+
+  <!-- QR corner brackets (top-right) -->
+  <rect x="380" y="68" width="64" height="16" fill="white"/>
+  <rect x="428" y="68" width="16" height="64" fill="white"/>
+
+  <!-- QR corner brackets (bottom-left) -->
+  <rect x="68" y="428" width="64" height="16" fill="white"/>
+  <rect x="68" y="380" width="16" height="64" fill="white"/>
+
+  <!-- QR corner brackets (bottom-right) -->
+  <rect x="380" y="428" width="64" height="16" fill="white"/>
+  <rect x="428" y="380" width="16" height="64" fill="white"/>
+
+  <!-- Top-left QR square module -->
+  <rect x="100" y="100" width="112" height="112" rx="8" fill="white"/>
+  <rect x="120" y="120" width="72" height="72" rx="4" fill="#8b0000"/>
+  <rect x="138" y="138" width="36" height="36" rx="2" fill="white"/>
+
+  <!-- Top-right QR square module -->
+  <rect x="300" y="100" width="112" height="112" rx="8" fill="white"/>
+  <rect x="320" y="120" width="72" height="72" rx="4" fill="#8b0000"/>
+  <rect x="338" y="138" width="36" height="36" rx="2" fill="white"/>
+
+  <!-- Bottom-left QR square module -->
+  <rect x="100" y="300" width="112" height="112" rx="8" fill="white"/>
+  <rect x="120" y="320" width="72" height="72" rx="4" fill="#8b0000"/>
+  <rect x="138" y="338" width="36" height="36" rx="2" fill="white"/>
+
+  <!-- Bottom-right data pattern -->
+  <rect x="300" y="300" width="48" height="48" rx="4" fill="white"/>
+  <rect x="364" y="300" width="48" height="48" rx="4" fill="white"/>
+  <rect x="300" y="364" width="48" height="48" rx="4" fill="white"/>
+  <rect x="332" y="332" width="16" height="16" rx="2" fill="#8b0000"/>
+  <rect x="364" y="364" width="24" height="24" rx="2" fill="white"/>
+  <rect x="396" y="364" width="16" height="16" rx="2" fill="#8b0000"/>
+
+  <!-- Centre "Æ" ligature -->
+  <text
+    x="256"
+    y="278"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="72"
+    font-weight="bold"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    fill="white"
+    opacity="0.95"
+  >Æ</text>
 </svg>
