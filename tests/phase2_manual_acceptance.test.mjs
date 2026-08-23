@@ -63,7 +63,7 @@ async function runTest() {
   reportStep(
     'Open the Student PWA & confirm unauthenticated state',
     true,
-    'Client loads into unauthenticated LoginView with camera QR scanner active and manual fallback ready.'
+    'Client loads into unauthenticated LoginView with camera QR scanner active and QR image upload fallback ready.'
   );
 
   // Step 2: Test invalid 64-character token
@@ -116,11 +116,11 @@ async function runTest() {
     'sessionStorage is strictly scoped to the browser tab session. Reopening app in a new tab requires re-authenticating.'
   );
 
-  // Step 6: Deny camera permission — confirm manual-entry fallback
+  // Step 6: Deny camera permission — confirm QR image upload fallback
   reportStep(
-    'Deny camera permission — confirm manual-entry fallback',
+    'Deny camera permission — confirm QR image upload fallback',
     true,
-    'QRScanner catches NotAllowedError / PermissionDeniedError, displays helpful explanation, and provides one-tap switch to ManualEntry.'
+    'QRScanner catches NotAllowedError / PermissionDeniedError, displays a helpful explanation, and offers one-tap QR image upload.'
   );
 
   // Step 7: Log out — verify the backend session is revoked

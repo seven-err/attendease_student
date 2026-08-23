@@ -93,7 +93,13 @@ export const QRScanner: React.FC<QRScannerProps> = ({
 
       const qrConfig = {
         fps: 15,
-        qrbox: { width: 250, height: 250 },
+        // Scan window = 70% of the viewfinder so it lines up exactly with the
+        // reticle drawn in CSS (.qr-viewfinder-box is also 70%) — one frame,
+        // not two competing overlays.
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const side = Math.max(140, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7));
+          return { width: side, height: side };
+        },
         aspectRatio: 1.0,
       };
 
@@ -136,15 +142,15 @@ export const QRScanner: React.FC<QRScannerProps> = ({
       const rawMessage = errorObj.message || '';
 
       if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError' || rawMessage.includes('Permission')) {
-        const msg = 'Camera access was denied. You can select an image of your QR code below or enter your code manually.';
+        const msg = 'Camera access was denied. You can upload an image of your QR code below to sign in.';
         setErrorMessage(msg);
         onPermissionDenied?.(msg);
       } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError' || rawMessage.includes('NotFound')) {
-        const msg = 'No camera found on this device. You can upload an image of your QR code below or use manual entry.';
+        const msg = 'No camera found on this device. You can upload an image of your QR code below to sign in.';
         setErrorMessage(msg);
         onCameraUnavailable?.(msg);
       } else {
-        const msg = 'Unable to start camera. You can upload an image of your QR code below or switch to manual entry.';
+        const msg = 'Unable to start camera. You can upload an image of your QR code below to sign in.';
         setErrorMessage(msg);
         onCameraUnavailable?.(msg);
       }
@@ -298,7 +304,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
             </div>
             <div className="qr-scan-hint">
               <Zap size={14} className="text-accent" />
-              <span>Align your Student or Employee QR code within the frame</span>
+              <span>Hold your QR code inside the frame</span>
             </div>
           </div>
         )}
@@ -307,7 +313,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         {scannerState === 'starting' && !isFileScanning && (
           <div className="qr-state-overlay">
             <RefreshCw size={28} className="spin-animation text-accent" />
-            <span>Initializing camera...</span>
+            <span>Starting the camera&hellip;</span>
           </div>
         )}
 
@@ -315,8 +321,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         {isFileScanning && (
           <div className="qr-state-overlay verifying">
             <RefreshCw size={32} className="spin-animation text-accent" />
-            <span style={{ fontWeight: 600, fontSize: '1rem' }}>Reading QR from Image...</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Processing locally on your device</span>
+            <span style={{ fontWeight: 600, fontSize: '1rem' }}>Reading your image&hellip;</span>
+            <span className="qr-state-overlay-subtext">Processing on your device only</span>
           </div>
         )}
 
@@ -324,8 +330,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         {isVerifying && !isFileScanning && (
           <div className="qr-state-overlay verifying">
             <RefreshCw size={32} className="spin-animation text-accent" />
-            <span style={{ fontWeight: 600, fontSize: '1rem' }}>Verifying QR Code...</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Securing your session</span>
+            <span style={{ fontWeight: 600, fontSize: '1rem' }}>Checking your code&hellip;</span>
+            <span className="qr-state-overlay-subtext">Signing you in securely</span>
           </div>
         )}
 
@@ -393,7 +399,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
       {scannerState === 'scanning' && !isVerifying && !isFileScanning && (
         <div className="qr-scanner-footer-notice" role="status">
           <AlertCircle size={14} aria-hidden="true" />
-          <span>Point your camera or upload your official AttendEase Student or Employee QR code.</span>
+          <span>Use your official AttendEase QR code to sign in.</span>
         </div>
       )}
     </div>

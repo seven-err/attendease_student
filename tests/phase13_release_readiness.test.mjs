@@ -74,7 +74,6 @@ const todayComponentCode = fs.readFileSync(path.join(srcDir, 'components/attenda
 const historyComponentCode = fs.readFileSync(path.join(srcDir, 'components/attendance/AttendanceHistory.tsx'), 'utf8');
 const issueComponentCode = fs.readFileSync(path.join(srcDir, 'components/issues/IssueReport.tsx'), 'utf8');
 const qrScannerCode = fs.readFileSync(path.join(srcDir, 'components/auth/QRScanner.tsx'), 'utf8');
-const manualInputCode = fs.readFileSync(path.join(srcDir, 'components/auth/ManualInput.tsx'), 'utf8');
 const loginViewCode = fs.readFileSync(path.join(srcDir, 'views/LoginView.tsx'), 'utf8');
 const cssCode = fs.readFileSync(path.join(srcDir, 'index.css'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
@@ -95,8 +94,14 @@ assert(
 );
 
 assert(
-  loginViewCode.includes("authMode === 'scan'") && loginViewCode.includes("authMode === 'manual'"),
-  'Login view provides both camera QR scanning and manual entry options'
+  loginViewCode.includes('QRScanner') && !loginViewCode.includes('ManualInput'),
+  'Login view is QR-scan only (manual entry removed)'
+);
+
+assert(
+  historyComponentCode.includes('getSemesterPenaltySummary') &&
+  historyComponentCode.includes('penalty-summary-card'),
+  'History view surfaces a semester penalty summary with totals'
 );
 
 assert(
@@ -106,9 +111,9 @@ assert(
 
 // 1.2 Session persistence & Watchdog
 assert(
-  sessionHookCode.includes('INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000') &&
-  sessionHookCode.includes('ABSOLUTE_TIMEOUT_MS = 60 * 60 * 1000'),
-  'Session watchdog enforces strict 15-minute inactivity and 1-hour absolute cap'
+  sessionHookCode.includes('INACTIVITY_TIMEOUT_MS = FOUR_YEARS_MS') &&
+  sessionHookCode.includes('ABSOLUTE_TIMEOUT_MS = FOUR_YEARS_MS'),
+  'Session watchdog keeps students signed in for ~4 years (no short inactivity/absolute caps)'
 );
 
 assert(
@@ -239,16 +244,15 @@ for (const file of srcFiles) {
   }
 }
 
-assert(!hasLocalStorage, 'Zero localStorage references across entire student codebase');
+assert(hasLocalStorage, 'Session identity persisted via localStorage across the student codebase');
 assert(!hasServiceRoleKey, 'Zero Service-Role Key references across client source code');
 assert(!hasDirectTableQuery, 'Zero direct table queries (.from()) in client code (strict RPC-only)');
 assert(!hasTokenLogging, 'Zero console logging of tokens, passwords, or secret credentials');
 
 assert(
-  storageCode.includes('sessionStorage') &&
-  !storageCode.includes('localStorage') &&
+  storageCode.includes('localStorage') &&
   !storageCode.includes('document.cookie'),
-  'Session storage utility strictly isolates tokens to sessionStorage only'
+  'Session storage utility persists tokens in localStorage without cookie fallback'
 );
 
 assert(

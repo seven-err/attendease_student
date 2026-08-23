@@ -14,10 +14,12 @@
 import type {
   TodayAttendanceRecord,
   AttendanceHistoryRecord,
+  SemesterPenaltySummary,
 } from '../types/portal';
 
 export const CACHE_KEYS = {
   TODAY: 'attendease_offline_today',
+  PENALTY_SUMMARY: 'attendease_offline_penalty_summary',
   HISTORY_PAGE_PREFIX: 'attendease_offline_history_p_',
   HISTORY_PAGES_INDEX: 'attendease_offline_history_pages_index',
 } as const;
@@ -97,7 +99,49 @@ export function sanitizeHistoryRecord(raw: AttendanceHistoryRecord): AttendanceH
     portal_status: raw.portal_status ? String(raw.portal_status) : undefined,
     is_late: Boolean(raw.is_late),
     late_label: raw.late_label ? String(raw.late_label) : null,
+    penalty_php: typeof raw.penalty_php === 'number' && !isNaN(raw.penalty_php) && raw.penalty_php > 0 ? raw.penalty_php : undefined,
+    is_unattended: Boolean(raw.is_unattended),
   };
+}
+
+/**
+ * Saves the sanitized semester penalty summary to sessionStorage.
+ */
+export function saveCachedPenaltySummary(summary: SemesterPenaltySummary): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload = { summary, fetchedAt: Date.now() };
+    sessionStorage.setItem(CACHE_KEYS.PENALTY_SUMMARY, JSON.stringify(payload));
+  } catch {
+    // Gracefully ignore storage quota errors
+  }
+}
+
+/**
+ * Retrieves the cached semester penalty summary from sessionStorage if valid.
+ */
+export function getCachedPenaltySummary(
+  maxAgeMs: number = DEFAULT_CACHE_TTL_MS
+): { summary: SemesterPenaltySummary; fetchedAt: number } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEYS.PENALTY_SUMMARY);
+    if (!raw) return null;
+
+    const data = JSON.parse(raw) as { summary?: SemesterPenaltySummary; fetchedAt?: number };
+    if (!data || !data.summary || typeof data.fetchedAt !== 'number') {
+      return null;
+    }
+
+    if (!isCacheValid(data.fetchedAt, maxAgeMs)) {
+      sessionStorage.removeItem(CACHE_KEYS.PENALTY_SUMMARY);
+      return null;
+    }
+
+    return { summary: data.summary, fetchedAt: data.fetchedAt };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -303,6 +347,7 @@ export function clearOfflineCache(): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.removeItem(CACHE_KEYS.TODAY);
+    sessionStorage.removeItem(CACHE_KEYS.PENALTY_SUMMARY);
 
     // Remove all cached history pages via index
     const rawIndex = sessionStorage.getItem(CACHE_KEYS.HISTORY_PAGES_INDEX);

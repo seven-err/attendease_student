@@ -26,27 +26,27 @@ export const ISSUE_CATEGORIES: IssueCategoryOption[] = [
   {
     type: 'missing_time_in',
     label: 'Missing Time In',
-    description: 'Scanned at entry but time-in was not recorded',
+    description: 'You scanned at entry, but your time-in was not recorded',
   },
   {
     type: 'missing_time_out',
     label: 'Missing Time Out',
-    description: 'Attended session but time-out was not captured',
+    description: 'You attended the session, but your time-out was not recorded',
   },
   {
     type: 'incorrect_time',
     label: 'Incorrect Time',
-    description: 'Recorded timestamp does not match arrival/departure',
+    description: 'The recorded time does not match when you arrived or left',
   },
   {
     type: 'wrong_status',
     label: 'Wrong Status',
-    description: 'Status marked incorrectly (e.g., absent or late by mistake)',
+    description: 'You were marked absent or late by mistake',
   },
   {
     type: 'other',
     label: 'Other',
-    description: 'General discrepancy or other attendance concern',
+    description: 'Anything else about your attendance that looks wrong',
   },
 ];
 
@@ -225,7 +225,7 @@ export const IssueReport: React.FC<IssueReportProps> = ({
     if (isOffline) {
       setSubmissionError({
         type: 'offline',
-        message: 'You are currently offline. Issue reports cannot be submitted without an internet connection.',
+        message: 'You are currently offline. Reconnect to the internet to send your report.',
       });
       return;
     }
@@ -316,14 +316,14 @@ export const IssueReport: React.FC<IssueReportProps> = ({
             <CheckCircle2 size={36} className="text-success" aria-hidden="true" />
           </div>
 
-          <h2 className="issue-success-title">Report Submitted</h2>
+          <h2 className="issue-success-title">Report Sent</h2>
           <p className="issue-success-desc">
-            Your issue report has been successfully submitted. Administrators will review the discrepancy and update your record accordingly.
+            Thank you. Your report has been sent to the attendance administrators, who will review it and update your record if needed.
           </p>
 
           {submitResult.reportId && (
             <div className="issue-reference-box">
-              <span className="issue-reference-label">Reference ID</span>
+              <span className="issue-reference-label">Reference Number</span>
               <code className="issue-reference-value">{submitResult.reportId}</code>
             </div>
           )}
@@ -373,9 +373,9 @@ export const IssueReport: React.FC<IssueReportProps> = ({
         <div className="issue-header-titles">
           <div className="issue-header-badge">
             <FileQuestion size={13} aria-hidden="true" />
-            <span>Support &amp; Inquiries</span>
+            <span>Help &amp; Support</span>
           </div>
-          <h2 className="issue-title">Report Attendance Issue</h2>
+          <h2 className="issue-title">Report an Issue</h2>
         </div>
 
         {onClose && (
@@ -400,9 +400,9 @@ export const IssueReport: React.FC<IssueReportProps> = ({
             <WifiOff size={18} aria-hidden="true" />
           </div>
           <div className="alert-body">
-            <div className="alert-title">Offline Mode</div>
+            <div className="alert-title">You're offline</div>
             <p className="alert-message">
-              You are currently offline. Issue reporting requires an active connection and cannot be submitted until you are back online.
+              You are currently offline. Reconnect to the internet to send an issue report.
             </p>
           </div>
         </div>
@@ -415,7 +415,7 @@ export const IssueReport: React.FC<IssueReportProps> = ({
             <Calendar size={18} aria-hidden="true" />
           </div>
           <div className="issue-context-info">
-            <div className="issue-context-label">Attached Attendance Session</div>
+            <div className="issue-context-label">About This Session</div>
             <div className="issue-context-title">
               {sessionContext.sessionTitle || 'Selected Session'}
             </div>
@@ -438,7 +438,7 @@ export const IssueReport: React.FC<IssueReportProps> = ({
       ) : (
         <div className="issue-general-badge">
           <Sparkles size={13} aria-hidden="true" />
-          <span>General Attendance Discrepancy</span>
+          <span>General attendance concern</span>
         </div>
       )}
 
@@ -464,12 +464,12 @@ export const IssueReport: React.FC<IssueReportProps> = ({
           <div className="alert-body">
             <div className="alert-title">
               {submissionError.type === 'rate_limited'
-                ? 'Rate Limit Reached'
+                ? 'Too many reports'
                 : submissionError.type === 'offline'
-                ? 'Offline Notice'
+                ? "You're offline"
                 : submissionError.type === 'unauthorized'
-                ? 'Authorization Notice'
-                : 'Unable to Submit'}
+                ? 'Not allowed'
+                : 'Unable to submit'}
             </div>
             <p className="alert-message">{submissionError.message}</p>
           </div>
@@ -480,7 +480,7 @@ export const IssueReport: React.FC<IssueReportProps> = ({
       <form onSubmit={handleSubmit} className="issue-form" noValidate>
         {/* Step 1: Category Selection */}
         <fieldset className="issue-fieldset">
-          <legend className="issue-label">1. Select Issue Category</legend>
+          <legend className="issue-label">1. What happened?</legend>
           <div
             className="issue-category-grid"
             role="radiogroup"
@@ -517,7 +517,7 @@ export const IssueReport: React.FC<IssueReportProps> = ({
         <div className="issue-fieldset">
           <div className="issue-label-row">
             <label htmlFor="issue-details-input" className="issue-label">
-              2. Describe the Discrepancy
+              2. Tell us more
             </label>
             <span
               id="char-counter-hint"
@@ -539,8 +539,8 @@ export const IssueReport: React.FC<IssueReportProps> = ({
               disabled={isSubmitting || isOffline}
               placeholder={
                 isOffline
-                  ? 'Issue reporting is disabled while offline.'
-                  : "Provide specific details about the issue (minimum 5 characters)... e.g., 'I was present at the session and scanned at 8:05 AM, but my attendance shows absent.'"
+                  ? 'Reconnect to the internet to describe your issue.'
+                  : "Describe what happened. For example: 'I was present and scanned at 8:05 AM, but my attendance shows absent.'"
               }
               aria-describedby="char-counter-hint issue-validation-error"
               aria-invalid={Boolean(validationError || isTooShort || isTooLong)}
@@ -592,7 +592,7 @@ export const IssueReport: React.FC<IssueReportProps> = ({
             ) : isOffline ? (
               <>
                 <WifiOff size={15} aria-hidden="true" />
-                <span>Offline (Cannot Submit)</span>
+                <span>Available once online</span>
               </>
             ) : (
               <>

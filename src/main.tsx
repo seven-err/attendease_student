@@ -46,12 +46,12 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
           <p style={{ color: '#3f3f46', margin: 0, fontSize: '0.9rem' }}>
             Something went wrong loading the portal.
           </p>
-          <p style={{ color: '#71717a', margin: 0, fontSize: '0.78rem', fontFamily: 'monospace', background: '#fff', padding: '0.5rem 1rem', borderRadius: 8, maxWidth: '100%', wordBreak: 'break-all' }}>
-            {this.state.error?.message}
+          <p style={{ color: '#71717a', margin: 0, fontSize: '0.85rem' }}>
+            Please try again. If the problem continues, check your internet connection.
           </p>
           <button
             onClick={() => { window.location.reload(); }}
-            style={{ background: '#8b0000', color: '#fff', border: 'none', borderRadius: 8, padding: '0.625rem 1.5rem', fontSize: '0.9rem', cursor: 'pointer', marginTop: '0.5rem' }}
+            style={{ background: '#8b0000', color: '#fff', border: 'none', borderRadius: 8, padding: '0.75rem 1.75rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.5rem', minHeight: 44, minWidth: 44 }}
           >
             Reload App
           </button>

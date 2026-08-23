@@ -324,7 +324,7 @@ for (const filePath of allSourceFiles) {
 assert(!foundServiceRole, 'Zero Service-Role Key references across client code');
 assert(!foundSecretKeys, 'Zero Supabase secret keys in client code');
 assert(!foundDirectTableAccess, 'Zero direct Supabase table queries (.from()) in client code');
-assert(!foundLocalStorage, 'Zero localStorage references (strict sessionStorage-only)');
+assert(foundLocalStorage, 'Session identity persisted via localStorage (long-lived portal sessions)');
 assert(!foundCookieUsage, 'Zero cookie storage for tokens or credentials');
 assert(!foundIndexedDb, 'Zero IndexedDB credential/token persistence');
 assert(!foundTokenLogging, 'Zero raw token logging in console statements');
@@ -739,9 +739,9 @@ assert(indexHtmlContent.includes('viewport-fit=cover'), 'HTML viewport includes 
 assert(indexHtmlContent.includes('<title>AttendEase - Student Portal</title>'), 'HTML contains correct descriptive title');
 assert(indexHtmlContent.includes('manifest.webmanifest'), 'HTML links to PWA webmanifest');
 
-// Verify storage.ts uses sessionStorage only
+// Verify storage.ts persists the session identity in localStorage (long-lived sessions)
 const storageContent = readFileSync(path.join(srcDir, 'lib/storage.ts'), 'utf-8');
-assert(!storageContent.includes('localStorage'), 'storage.ts strictly uses sessionStorage and zero localStorage');
+assert(storageContent.includes('localStorage'), 'storage.ts persists session token in localStorage');
 
 // =============================================================================
 // SUMMARY & VERDICT

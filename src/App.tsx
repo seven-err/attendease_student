@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import QRCode from 'react-qr-code';
 import { useStudentSession } from './hooks/useStudentSession';
 import { useNetworkState } from './hooks/useNetworkState';
 import { LoginView } from './views/LoginView';
@@ -12,11 +13,12 @@ import {
   clearOfflineCache,
 } from './lib/offlineCache';
 import type { TodayAttendanceRecord } from './types/portal';
-import { Calendar, History, FileQuestion, LogOut, WifiOff, RotateCw, Briefcase, User } from 'lucide-react';
+import { Calendar, History, FileQuestion, LogOut, WifiOff, RotateCw, Briefcase, User, X } from 'lucide-react';
 
 export function App() {
   const {
     token,
+    qrToken,
     profile,
     isLoading,
     isSessionExpired,
@@ -32,6 +34,22 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'report'>('today');
   const [selectedReportSession, setSelectedReportSession] = useState<SessionContextInfo | null>(null);
   const previousTabRef = useRef<'today' | 'history'>('today');
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  // Close the enlarged QR modal on Escape and lock background scroll while open
+  useEffect(() => {
+    if (!isQrModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsQrModalOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isQrModalOpen]);
 
   // Today Attendance State
   const [todayRecords, setTodayRecords] = useState<TodayAttendanceRecord[]>([]);
@@ -198,8 +216,27 @@ export function App() {
     setActiveTab(previousTabRef.current || 'today');
   }, []);
 
+  // Ask before signing out so a stray tap doesn't end the session unexpectedly
+  const handleLogoutClick = useCallback(() => {
+    const confirmed = window.confirm(
+      'Sign out of AttendEase?\n\nYou will need your QR code to sign in again.'
+    );
+    if (confirmed) {
+      void logout();
+    }
+  }, [logout]);
+
   // Feature flag: temporarily disable Issue Reporting UI
   const isReportIssueEnabled = false;
+
+  // Time-aware greeting for the Home screen
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  })();
+  const firstName = profile?.full_name?.trim().split(/\s+/)[0] || '';
 
   // View: Unauthenticated Login View
   if (!isAuthenticated) {
@@ -222,14 +259,14 @@ export function App() {
       {isOffline && (
         <div className="global-network-banner offline" role="status" aria-live="polite">
           <WifiOff size={13} aria-hidden="true" />
-          <span>Offline Mode &bull; Displaying cached attendance data</span>
+          <span>You're offline &bull; Showing your recent attendance</span>
         </div>
       )}
 
       {isReconnecting && (
         <div className="global-network-banner reconnecting" role="status" aria-live="polite">
           <RotateCw size={13} className="spin-animation" aria-hidden="true" />
-          <span>Back online &bull; Updating latest records...</span>
+          <span>You're back online &bull; Updating your records&hellip;</span>
         </div>
       )}
 
@@ -262,12 +299,12 @@ export function App() {
               <div className="header-actions">
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={handleLogoutClick}
                   className="btn btn-secondary logout-btn"
                   title="Sign Out"
                   aria-label="Sign out of student portal"
                 >
-                  <LogOut size={12} aria-hidden="true" />
+                  <LogOut size={14} aria-hidden="true" />
                   <span>Sign Out</span>
                 </button>
               </div>
@@ -281,19 +318,39 @@ export function App() {
                     {isEmployee ? <Briefcase size={22} /> : <User size={22} />}
                   </div>
                   <div className="profile-info">
+                    <div className="profile-greeting">
+                      {greeting}{firstName ? `, ` : ''}
+                      {firstName && <span className="profile-greeting-name">{firstName}</span>}
+                    </div>
                     <div className="profile-name-row">
                       <div className="profile-name">{profile.full_name}</div>
-                      <span className={`role-badge ${isEmployee ? 'role-badge-employee' : 'role-badge-student'}`}>
-                        {roleLabel}
-                      </span>
                     </div>
                     <div className="profile-meta">
-                      <span>{isEmployee ? 'Emp ID' : 'Student ID'}: {profile.student_number}</span>
-                      {profile.department && <span>&bull; Dept: {profile.department}</span>}
-                      {!isEmployee && profile.course && <span>&bull; {profile.course}</span>}
-                      {!isEmployee && profile.year_level && <span>&bull; Year {profile.year_level}</span>}
+                      {profile.course && <span>{profile.course}</span>}
+                      {!isEmployee && profile.year_level && <span>{profile.year_level}</span>}
                     </div>
                   </div>
+                  {qrToken && (
+                    <figure className="profile-qr" aria-label="Your personal QR code">
+                      <button
+                        type="button"
+                        className="profile-qr-frame"
+                        onClick={() => setIsQrModalOpen(true)}
+                        aria-haspopup="dialog"
+                        aria-label="Enlarge your personal QR code"
+                        title="Tap to enlarge QR code"
+                      >
+                        <QRCode
+                          value={qrToken}
+                          size={68}
+                          bgColor="#ffffff"
+                          fgColor="#18181b"
+                          level="M"
+                        />
+                      </button>
+                      <figcaption className="profile-qr-caption">Click me</figcaption>
+                    </figure>
+                  )}
                 </section>
               )}
 
@@ -355,7 +412,9 @@ export function App() {
           className={`nav-item ${activeTab === 'today' ? 'active' : ''}`}
           onClick={() => setActiveTab('today')}
         >
-          <Calendar size={18} aria-hidden="true" />
+          <span className="nav-icon" aria-hidden="true">
+            <Calendar size={18} />
+          </span>
           <span>Today</span>
         </button>
         <button
@@ -367,10 +426,11 @@ export function App() {
           className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
-          <History size={18} aria-hidden="true" />
+          <span className="nav-icon" aria-hidden="true">
+            <History size={18} />
+          </span>
           <span>History</span>
-        </button>
-        {isReportIssueEnabled && (
+        </button>        {isReportIssueEnabled && (
           <button
             id="nav-tab-report"
             type="button"
@@ -380,11 +440,49 @@ export function App() {
             className={`nav-item ${activeTab === 'report' ? 'active' : ''}`}
             onClick={handleNavToReport}
           >
-            <FileQuestion size={18} aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">
+              <FileQuestion size={18} />
+            </span>
             <span>Report Issue</span>
           </button>
         )}
       </nav>
+
+      {/* Enlarged Personal QR Code Modal (click backdrop to dismiss) */}
+      {isQrModalOpen && qrToken && (
+        <div
+          className="qr-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your personal QR code enlarged"
+          onClick={() => setIsQrModalOpen(false)}
+        >
+          <div className="qr-modal-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="qr-modal-close-btn"
+              onClick={() => setIsQrModalOpen(false)}
+              aria-label="Close enlarged QR code"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+            <div className="qr-modal-code">
+              <QRCode value={qrToken} size={240} bgColor="#ffffff" fgColor="#18181b" level="M" />
+            </div>
+            {profile && (
+              <>
+                <h2 className="qr-modal-name">{profile.full_name}</h2>
+                <div className="qr-modal-meta">
+                  {profile.department && <span>{profile.department}</span>}
+                  {profile.course && <span>{profile.course}</span>}
+                  {profile.year_level && <span>{profile.year_level}</span>}
+                </div>
+              </>
+            )}
+            <p className="qr-modal-hint">Present this code at the attendance scanner</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

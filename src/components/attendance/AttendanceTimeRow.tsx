@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn, LogOut, Clock } from 'lucide-react';
+import { LogIn, LogOut } from 'lucide-react';
 
 export interface AttendanceTimeRowProps {
   timeIn?: string | null;
@@ -45,9 +45,6 @@ export const AttendanceTimeRow: React.FC<AttendanceTimeRowProps> = ({
             <LogIn size={14} className="time-card-icon time-in-icon" aria-hidden="true" />
             <span>Time In</span>
           </div>
-          {hasTimeIn && (
-            <span className="time-status-indicator recorded" aria-hidden="true">Recorded</span>
-          )}
         </div>
         <div className="time-card-value">
           {formattedTimeIn ? (
@@ -68,13 +65,6 @@ export const AttendanceTimeRow: React.FC<AttendanceTimeRowProps> = ({
             <LogOut size={14} className="time-card-icon time-out-icon" aria-hidden="true" />
             <span>Time Out</span>
           </div>
-          {hasTimeOut ? (
-            <span className="time-status-indicator recorded" aria-hidden="true">Recorded</span>
-          ) : hasTimeIn ? (
-            <span className="time-status-indicator awaiting" aria-hidden="true">
-              <Clock size={11} aria-hidden="true" /> Pending
-            </span>
-          ) : null}
         </div>
         <div className="time-card-value">
           {formattedTimeOut ? (

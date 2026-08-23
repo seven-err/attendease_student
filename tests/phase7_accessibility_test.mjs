@@ -44,7 +44,6 @@ function getFiles(dir, filter = (f) => true) {
 const srcFiles = getFiles('src', (f) => f.endsWith('.ts') || f.endsWith('.tsx') || f.endsWith('.css'));
 const cssContent = readFileSync('src/index.css', 'utf8');
 const loginViewContent = readFileSync('src/views/LoginView.tsx', 'utf8');
-const manualInputContent = readFileSync('src/components/auth/ManualInput.tsx', 'utf8');
 const qrScannerContent = readFileSync('src/components/auth/QRScanner.tsx', 'utf8');
 const todayAttendanceContent = readFileSync('src/components/attendance/TodayAttendance.tsx', 'utf8');
 const attendanceHistoryContent = readFileSync('src/components/attendance/AttendanceHistory.tsx', 'utf8');
@@ -83,10 +82,9 @@ assert(
 console.log('\n--- 2. Login & Authentication Accessibility ---');
 
 assert(
-  loginViewContent.includes('role="tablist"') &&
-  loginViewContent.includes('role="tab"') &&
-  loginViewContent.includes('aria-selected'),
-  '6. LoginView contains accessible tablist/tab ARIA semantics'
+  loginViewContent.includes('aria-label="Sign-in method"') &&
+  loginViewContent.includes('role="tabpanel"'),
+  '6. LoginView exposes a single accessible sign-in panel with a labelled method note'
 );
 
 assert(
@@ -95,21 +93,6 @@ assert(
   '7. Session expired banner is marked role="alert" with accessible dismiss button'
 );
 
-assert(
-  manualInputContent.includes('aria-label="Clear student token input"'),
-  '8. ManualInput Clear Token button has accessible name'
-);
-
-assert(
-  manualInputContent.includes('aria-label={showToken ? \'Hide student token\' : \'Show student token\'}'),
-  '9. ManualInput visibility toggle has accessible name'
-);
-
-assert(
-  manualInputContent.includes('aria-describedby=') &&
-  manualInputContent.includes('id="manual-input-error"'),
-  '10. ManualInput validation errors are associated via aria-describedby'
-);
 
 assert(
   qrScannerContent.includes('aria-label="Retry starting camera"'),

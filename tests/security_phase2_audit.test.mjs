@@ -114,7 +114,7 @@ for (const filePath of sourceFiles) {
 // 3. Assertions for Static Checks
 assert(!foundServiceRole, 'Zero Service-Role Key references across all source files');
 assert(!foundDirectTableAccess, 'Zero direct Supabase table queries (.from()) in client code');
-assert(!foundLocalStorage, 'Zero localStorage references (strict sessionStorage enforcement)');
+assert(foundLocalStorage, 'Session identity persisted via localStorage (long-lived portal sessions)');
 assert(!foundCookieUsage, 'Zero cookie storage for tokens or credentials');
 assert(!foundIndexedDb, 'Zero IndexedDB token persistence');
 assert(!foundTokenLogging, 'Zero raw token logging in console.log / console.info');

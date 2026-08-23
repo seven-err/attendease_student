@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { QRScanner } from '../components/auth/QRScanner';
-import { ManualInput } from '../components/auth/ManualInput';
-import { QrCode, KeyRound, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
+import { QrCode, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
 import type { CreateSessionResponse } from '../types/portal';
 
 interface LoginViewProps {
@@ -17,7 +16,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
   isSessionExpired,
   onClearSessionExpired,
 }) => {
-  const [authMode, setAuthMode] = useState<'scan' | 'manual'>('scan');
   const [authError, setAuthError] = useState<{ type: 'invalid_token' | 'server_error' | 'permission'; message: string } | null>(null);
 
   const handleScanOrSubmit = async (rawToken: string) => {
@@ -29,12 +27,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
     if (response.status === 'invalid_token') {
       setAuthError({
         type: 'invalid_token',
-        message: 'Unrecognized QR code. This code was not found in the AttendEase database. Please scan or enter your official Student or Employee QR code.',
+        message:
+          "This QR code wasn't recognized. Please scan your official AttendEase QR code again.",
       });
     } else if (response.status === 'server_error') {
       setAuthError({
         type: 'server_error',
-        message: response.message || 'Unable to connect to the authentication server. Please check your network and try again.',
+        message: response.message || 'We could not reach the attendance server. Please check your internet connection and try again.',
       });
     }
   };
@@ -46,27 +45,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
     });
   };
 
-  const handleSwitchToManual = () => {
-    setAuthMode('manual');
-    setAuthError(null);
-  };
-
-  const handleSwitchToScan = () => {
-    setAuthMode('scan');
-    setAuthError(null);
-  };
-
-  const handleKeyDownTab = (e: React.KeyboardEvent, targetMode: 'scan' | 'manual') => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-      e.preventDefault();
-      if (targetMode === 'scan') {
-        handleSwitchToManual();
-      } else {
-        handleSwitchToScan();
-      }
-    }
-  };
-
   return (
     <div className="login-view-container">
       {/* Session Expired Banner / Modal */}
@@ -75,9 +53,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="session-expired-content">
             <Clock size={20} className="text-warning" aria-hidden="true" />
             <div>
-              <div className="session-expired-title">Session Expired</div>
+              <div className="session-expired-title">Your session ended</div>
               <div className="session-expired-desc">
-                Your session timed out for your security. Please scan your Student or Employee QR code to sign in again.
+                For your security, sessions end after a period of inactivity. Scan your QR code to sign in again.
               </div>
             </div>
           </div>
@@ -104,40 +82,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
             height={64}
           />
         </div>
-        <h1 className="login-title">AttendEase</h1>
-        <p className="login-subtitle">Student &amp; Employee Attendance Portal</p>
+        <h1 className="login-title">Welcome to AttendEase</h1>
+        <p className="login-subtitle">Scan your QR code to sign in.</p>
       </header>
 
-      {/* Mode Switcher Tabs */}
-      <div className="auth-tabs-container" role="tablist" aria-label="Authentication Method">
-        <button
-          id="tab-scan"
-          type="button"
-          role="tab"
-          aria-selected={authMode === 'scan'}
-          aria-controls="auth-tabpanel-scan"
-          className={`auth-tab-btn ${authMode === 'scan' ? 'active' : ''}`}
-          onClick={handleSwitchToScan}
-          onKeyDown={(e) => handleKeyDownTab(e, 'scan')}
-          disabled={isLoading}
-        >
-          <QrCode size={18} aria-hidden="true" />
-          <span>Scan QR Code</span>
-        </button>
-        <button
-          id="tab-manual"
-          type="button"
-          role="tab"
-          aria-selected={authMode === 'manual'}
-          aria-controls="auth-tabpanel-manual"
-          className={`auth-tab-btn ${authMode === 'manual' ? 'active' : ''}`}
-          onClick={handleSwitchToManual}
-          onKeyDown={(e) => handleKeyDownTab(e, 'manual')}
-          disabled={isLoading}
-        >
-          <KeyRound size={18} aria-hidden="true" />
-          <span>Manual Entry</span>
-        </button>
+      {/* Mode Indicator */}
+      <div className="auth-mode-indicator" role="note" aria-label="Sign-in method">
+        <QrCode size={16} aria-hidden="true" />
+        <span>Camera QR Sign-In</span>
       </div>
 
       {/* Global Error Banner */}
@@ -153,50 +105,34 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="auth-error-body">
             <span className="auth-error-title">
               {authError.type === 'invalid_token'
-                ? 'Invalid QR Code'
+                ? "We didn't recognize that code"
                 : authError.type === 'permission'
-                ? 'Camera Access Required'
-                : 'Connection Error'}
+                ? 'Camera access needed'
+                : 'Connection problem'}
             </span>
             <p className="auth-error-message">{authError.message}</p>
-            {authError.type === 'permission' && authMode === 'scan' && (
-              <button
-                type="button"
-                className="auth-error-action-btn"
-                onClick={handleSwitchToManual}
-              >
-                Switch to Manual Entry &rarr;
-              </button>
-            )}
           </div>
         </div>
       )}
 
       {/* Main Content Area */}
       <div
-        id={authMode === 'scan' ? 'auth-tabpanel-scan' : 'auth-tabpanel-manual'}
         role="tabpanel"
-        aria-labelledby={authMode === 'scan' ? 'tab-scan' : 'tab-manual'}
+        aria-label="QR code sign-in"
         className="auth-content-box"
       >
-        {authMode === 'scan' ? (
-          <QRScanner
-            key="active-qr-scanner"
-            onScan={handleScanOrSubmit}
-            isVerifying={isLoading}
-            onPermissionDenied={handlePermissionDenied}
-          />
-        ) : (
-          <ManualInput
-            onSubmit={handleScanOrSubmit}
-            isVerifying={isLoading}
-          />
-        )}
+        <QRScanner
+          key="active-qr-scanner"
+          onScan={handleScanOrSubmit}
+          isVerifying={isLoading}
+          onPermissionDenied={handlePermissionDenied}
+          onCameraUnavailable={handlePermissionDenied}
+        />
       </div>
 
       {/* Footer Info */}
       <footer className="login-footer">
-        <span>AttendEase Attendance Portal &bull; Zero-Trust Session Architecture</span>
+        <span>AttendEase &bull; Your attendance, made easy</span>
       </footer>
     </div>
   );

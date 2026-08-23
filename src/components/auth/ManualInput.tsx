@@ -7,6 +7,14 @@ interface ManualInputProps {
   isVerifying: boolean;
 }
 
+/**
+ * Manual QR-code entry fallback.
+ *
+ * NOTE: The current sign-in screen is QR-scan only, so this component is not
+ * mounted anywhere right now. It is kept as the accessible fallback path for
+ * users who cannot use the camera (e.g., damaged camera or kiosk devices).
+ * Wire it into LoginView to re-enable manual entry.
+ */
 export const ManualInput: React.FC<ManualInputProps> = ({ onSubmit, isVerifying }) => {
   const [tokenInput, setTokenInput] = useState('');
   const [showToken, setShowToken] = useState(false);
@@ -21,11 +29,11 @@ export const ManualInput: React.FC<ManualInputProps> = ({ onSubmit, isVerifying 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!cleanToken) {
-      setLocalError('Please enter your Student or Employee QR code or ID number.');
+      setLocalError('Please enter your QR code or ID number.');
       return;
     }
     if (!isValidFormat) {
-      setLocalError('Code must be between 3 and 128 characters.');
+      setLocalError("That code doesn't look right. Please double-check it and try again.");
       return;
     }
     setLocalError(null);
@@ -49,23 +57,23 @@ export const ManualInput: React.FC<ManualInputProps> = ({ onSubmit, isVerifying 
       <div className="manual-input-card">
         <div className="manual-input-header">
           <KeyRound size={18} className="text-accent" aria-hidden="true" />
-          <span className="manual-input-title">Manual Code Entry</span>
+          <span className="manual-input-title">Enter your code</span>
         </div>
 
         <p className="manual-input-description">
-          Enter or paste your Student or Employee QR code (e.g. CRMC-2026-XXXX) or token if camera scanning is unavailable.
+          Type or paste the code from your AttendEase QR code (for example, CRMC-2026-0378) if you can't scan it with the camera.
         </p>
 
         <div className="manual-input-field-wrapper">
           <label htmlFor="student-token-input" className="input-label">
-            STUDENT / EMPLOYEE QR CODE OR NUMBER
+            Your QR code or ID number
           </label>
           <div className="input-with-actions">
             <input
               id="student-token-input"
               type={showToken ? 'text' : 'password'}
               className={`input-field ${localError ? 'input-error' : ''}`}
-              placeholder="e.g. CRMC-2026-0378 or token..."
+              placeholder="e.g. CRMC-2026-0378"
               value={tokenInput}
               onChange={handleChange}
               disabled={isVerifying}
@@ -110,13 +118,13 @@ export const ManualInput: React.FC<ManualInputProps> = ({ onSubmit, isVerifying 
           type="submit"
           className="btn btn-primary manual-submit-btn"
           disabled={isVerifying || !isValidFormat}
-          aria-label={isVerifying ? 'Verifying QR Code...' : 'Sign In with QR Code'}
+          aria-label={isVerifying ? 'Checking your code. Please wait.' : 'Sign in'}
         >
           {isVerifying ? (
-            'Verifying Code...'
+            'Checking your code…'
           ) : (
             <>
-              <span>Sign In with QR Code</span>
+              <span>Sign in</span>
               <ArrowRight size={16} aria-hidden="true" />
             </>
           )}
@@ -124,7 +132,7 @@ export const ManualInput: React.FC<ManualInputProps> = ({ onSubmit, isVerifying 
 
         <div className="manual-input-security-note">
           <ShieldCheck size={14} aria-hidden="true" />
-          <span>Codes are verified directly against the AttendEase secure database.</span>
+          <span>Your code is checked securely and is never shared.</span>
         </div>
       </div>
     </form>

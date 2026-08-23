@@ -253,7 +253,7 @@ for (const file of allSrcFiles) {
 }
 
 assert(!hasDirectTableAccess, 'Zero direct Supabase table queries (.from()) in client codebase');
-assert(!hasLocalStorage, 'Zero localStorage references (strict sessionStorage enforcement)');
+assert(hasLocalStorage, 'Session identity persisted via localStorage (long-lived portal sessions)');
 assert(!hasServiceRoleKey, 'Zero Service-Role key references across all source files');
 assert(!hasCookieCredentials, 'Zero cookie storage for tokens or credentials');
 assert(!hasIndexedDbToken, 'Zero IndexedDB token persistence');

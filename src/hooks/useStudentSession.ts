@@ -4,17 +4,22 @@ import {
   setSessionToken,
   getStoredProfile,
   setStoredProfile,
+  getStoredQrToken,
+  setStoredQrToken,
   getSessionTimestamps,
   setSessionTimestamps,
   setLastActiveTimestamp,
   clearSession,
 } from '../lib/storage';
-import { createStudentSession, destroyStudentSession } from '../lib/api';
+import { createStudentSession, destroyStudentSession, normalizeScannedQr } from '../lib/api';
 import type { StudentProfile, CreateSessionResponse } from '../types/portal';
 
 export const ACTIVITY_THROTTLE_MS = 15 * 1000; // 15 seconds throttle
-export const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
-export const ABSOLUTE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour absolute cap
+// Long-lived sessions: students stay signed in for ~4 years (matches the
+// server-side perpetual portal session policy) unless they sign out manually.
+export const FOUR_YEARS_MS = 4 * 365.25 * 24 * 60 * 60 * 1000; // ≈ 126,230,400,000 ms
+export const INACTIVITY_TIMEOUT_MS = FOUR_YEARS_MS; // ~4 years of inactivity
+export const ABSOLUTE_TIMEOUT_MS = FOUR_YEARS_MS; // ~4 years absolute cap
 export const WATCHDOG_INTERVAL_MS = 30 * 1000; // 30 seconds periodic check
 
 export interface WatchdogEvaluationResult {
@@ -34,16 +39,17 @@ export function evaluateSessionWatchdog(
     return { expired: false };
   }
   if (now - lastActiveAt > INACTIVITY_TIMEOUT_MS) {
-    return { expired: true, reason: 'Session expired due to 15 minutes of inactivity.' };
+    return { expired: true, reason: 'Session expired after roughly 4 years of inactivity.' };
   }
   if (now - createdAt > ABSOLUTE_TIMEOUT_MS) {
-    return { expired: true, reason: 'Session reached 1-hour maximum lifetime.' };
+    return { expired: true, reason: 'Session reached its ~4-year maximum lifetime.' };
   }
   return { expired: false };
 }
 
 export interface UseStudentSessionReturn {
   token: string | null;
+  qrToken: string | null;
   profile: StudentProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -89,6 +95,17 @@ export function useStudentSession(): UseStudentSessionReturn {
     return rawProfile;
   });
 
+  // Raw QR credential used at sign-in; kept so the student's personal QR
+  // code can be re-displayed on their profile card for future check-ins.
+  const [qrToken, setQrToken] = useState<string | null>(() => {
+    const rawToken = getSessionToken();
+    const rawProfile = getStoredProfile();
+    if (!rawToken || !rawProfile) {
+      return null;
+    }
+    return getStoredQrToken();
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
 
@@ -100,6 +117,7 @@ export function useStudentSession(): UseStudentSessionReturn {
     clearSession();
     setToken(null);
     setProfile(null);
+    setQrToken(null);
     setIsSessionExpired(true);
   }, []);
 
@@ -143,13 +161,16 @@ export function useStudentSession(): UseStudentSessionReturn {
 
       if (res.status === 'ok' && res.session_token && res.student) {
         const now = Date.now();
+        const normalizedQr = normalizeScannedQr(qrToken) || qrToken.trim();
         setSessionToken(res.session_token);
         setStoredProfile(res.student);
+        setStoredQrToken(normalizedQr);
         setSessionTimestamps(now, now);
 
         lastActivityTouchRef.current = now;
         setToken(res.session_token);
         setProfile(res.student);
+        setQrToken(normalizedQr);
         setIsSessionExpired(false);
       }
 
@@ -173,6 +194,7 @@ export function useStudentSession(): UseStudentSessionReturn {
     clearSession();
     setToken(null);
     setProfile(null);
+    setQrToken(null);
     setIsSessionExpired(false);
   }, [token]);
 
@@ -226,6 +248,7 @@ export function useStudentSession(): UseStudentSessionReturn {
 
   return {
     token,
+    qrToken,
     profile,
     isAuthenticated: Boolean(token && profile),
     isLoading,

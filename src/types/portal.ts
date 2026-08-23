@@ -43,7 +43,7 @@ export interface TodayAttendanceRecord {
   time_in?: string | null;
   time_out?: string | null;
   raw_status?: string | null;
-  portal_status?: string; // 'Complete' | 'In Progress' | 'Awaiting Scan' | 'Not Recorded' | 'Missing Time In' | 'Absent'
+  portal_status?: string; // 'Complete' | 'In Progress' | 'Awaiting Scan' | 'Not Open Yet' | 'Not Recorded' | 'Missing Time In' | 'Absent'
   is_late?: boolean;
   late_label?: string | null;
 
@@ -84,6 +84,10 @@ export interface AttendanceHistoryRecord {
   portal_status?: string;
   is_late?: boolean;
   late_label?: string | null;
+
+  // Penalty tracking (see migration 20260822000000)
+  penalty_php?: number;
+  is_unattended?: boolean;
 
   // Optional compatibility aliases
   log_id?: string;
@@ -129,3 +133,25 @@ export interface DestroySessionResponse {
   status: 'ok' | 'server_error';
   message?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Semester Penalty Summary (migration 20260822000000)
+// ---------------------------------------------------------------------------
+
+export interface SemesterPenaltySummary {
+  total_penalty_php: number;
+  absent_count: number;
+  late_count: number;
+  recorded_sessions_count: number;
+  total_sessions_count: number;
+  semester_label?: string;
+  academic_year?: string | null;
+  period_start?: string;
+  period_end?: string;
+  currency?: string;
+}
+
+export type GetSemesterPenaltyResponse =
+  | { status: 'ok'; summary?: SemesterPenaltySummary }
+  | { status: 'session_expired' }
+  | { status: 'server_error'; message?: string };

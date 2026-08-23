@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { AttendanceHistoryRecord } from '../../types/portal';
-import { getAttendanceHistory } from '../../lib/api';
+import type { AttendanceHistoryRecord, SemesterPenaltySummary } from '../../types/portal';
+import { getAttendanceHistory, getSemesterPenaltySummary } from '../../lib/api';
 import {
   saveCachedHistoryPage,
   getCachedHistoryPage,
+  saveCachedPenaltySummary,
+  getCachedPenaltySummary,
   formatCacheTimestamp,
   formatTimeAgo,
 } from '../../lib/offlineCache';
@@ -21,6 +23,11 @@ import {
   FileQuestion,
   CloudOff,
   WifiOff,
+  Coins,
+  CalendarRange,
+  XCircle,
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 
 export { formatAttendanceTime };
@@ -34,7 +41,7 @@ export interface AttendanceHistoryProps {
   isOffline?: boolean;
 }
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 5;
 
 /**
  * Formats a YYYY-MM-DD date string into human-readable format, e.g., "Friday, Aug 21, 2026".
@@ -92,10 +99,30 @@ export function formatScheduleTime(timeStr?: string | null): string | null {
   return null;
 }
 
+/**
+ * Formats a PHP amount, e.g. 50 -> "₱50", 1234.5 -> "₱1,234.50".
+ */
+export function formatPeso(amount?: number | null): string {
+  const value = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+  const hasCents = Math.round(value * 100) % 100 !== 0;
+  return `₱${value.toLocaleString('en-PH', {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/**
+ * Human label for why a record carries a penalty.
+ */
+function describePenalty(record: AttendanceHistoryRecord): string | null {
+  if (!record.penalty_php || record.penalty_php <= 0) return null;
+  if (record.raw_status === 'Late') return 'Late';
+  return 'Absence';
+}
+
 export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
   sessionToken,
   onSessionExpired,
-  pageSize = DEFAULT_PAGE_SIZE,
   className = '',
   onReportIssue,
   isOffline = false,
@@ -103,9 +130,16 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
   const [records, setRecords] = useState<AttendanceHistoryRecord[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
+  // Records per page (user-selectable: 5 or 10; defaults to 5)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(true);
   const [isPaginating, setIsPaginating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Semester penalty summary state
+  const [penaltySummary, setPenaltySummary] = useState<SemesterPenaltySummary | null>(null);
+  const [isPenaltyLoading, setIsPenaltyLoading] = useState<boolean>(true);
+  const [isPenaltyFromCache, setIsPenaltyFromCache] = useState<boolean>(false);
 
   // Offline caching states
   const [isFromCache, setIsFromCache] = useState<boolean>(false);
@@ -129,6 +163,50 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  /**
+   * Fetches the cumulative semester penalty summary with offline fallback.
+   */
+  const fetchPenaltySummary = useCallback(async () => {
+    if (!sessionToken) return;
+
+    setIsPenaltyLoading(true);
+
+    if (isOffline) {
+      const cached = getCachedPenaltySummary();
+      if (isMountedRef.current) {
+        if (cached) {
+          setPenaltySummary(cached.summary);
+          setIsPenaltyFromCache(true);
+        }
+        setIsPenaltyLoading(false);
+      }
+      return;
+    }
+
+    const response = await getSemesterPenaltySummary(sessionToken);
+
+    if (!isMountedRef.current || activeTokenRef.current !== sessionToken) return;
+
+    if (response.status === 'ok') {
+      if (response.summary) {
+        setPenaltySummary(response.summary);
+        setIsPenaltyFromCache(false);
+        saveCachedPenaltySummary(response.summary);
+      }
+    } else if (response.status === 'session_expired') {
+      onSessionExpired();
+      return;
+    } else {
+      const cached = getCachedPenaltySummary();
+      if (cached) {
+        setPenaltySummary(cached.summary);
+        setIsPenaltyFromCache(true);
+      }
+    }
+
+    setIsPenaltyLoading(false);
+  }, [sessionToken, isOffline, onSessionExpired]);
 
   /**
    * Fetches attendance history for a specific page with offline fallback.
@@ -241,10 +319,12 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
 
     if (sessionToken) {
       fetchPage(1, true);
+      fetchPenaltySummary();
     } else {
       setIsLoadingInitial(false);
+      setIsPenaltyLoading(false);
     }
-  }, [sessionToken, isOffline, fetchPage]);
+  }, [sessionToken, isOffline, fetchPage, fetchPenaltySummary]);
 
   // Page navigation handlers
   const handlePreviousPage = () => {
@@ -259,6 +339,12 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
     }
   };
 
+  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const next = parseInt(e.target.value, 10);
+    if (!Number.isFinite(next) || next === pageSize || isLoadingInitial || isPaginating) return;
+    setPageSize(next);
+  };
+
   const handleRetry = () => {
     if (!isLoadingInitial && !isPaginating) {
       fetchPage(page, records.length === 0);
@@ -267,12 +353,13 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
 
   const handleRefresh = () => {
     if (isOffline) {
-      setOfflineNotice("You're offline. Connect to internet to update past records.");
+      setOfflineNotice("You're offline. Connect to the internet to refresh your records.");
       setTimeout(() => setOfflineNotice(null), 3500);
       return;
     }
     if (!isLoadingInitial && !isPaginating) {
       fetchPage(page, false);
+      fetchPenaltySummary();
     }
   };
 
@@ -280,15 +367,19 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, totalCount);
 
+  const totalPenalty = penaltySummary?.total_penalty_php ?? 0;
+  const semesterTitle = [
+    penaltySummary?.semester_label,
+    penaltySummary?.academic_year ? `AY ${penaltySummary.academic_year}` : null,
+  ]
+    .filter(Boolean)
+    .join(' • ');
+
   return (
     <div className={`attendance-history-container ${className}`} aria-label="Attendance History Dashboard">
       {/* Section Header */}
       <header className="history-section-header">
         <div className="history-header-titles">
-          <div className="history-header-badge">
-            <History size={13} aria-hidden="true" />
-            <span>Past Records</span>
-          </div>
           <h2 className="history-title">Attendance History</h2>
         </div>
 
@@ -312,12 +403,76 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
         </div>
       </header>
 
+      {/* Semester Penalty Summary */}
+      {isPenaltyLoading ? (
+        <div className="penalty-summary-card skeleton-penalty-card" aria-busy="true" aria-label="Loading your semester penalty summary">
+          <div className="skeleton-line skeleton-title shimmer" />
+          <div className="skeleton-line skeleton-subtitle shimmer" />
+        </div>
+      ) : penaltySummary ? (
+        <section
+          className={`card penalty-summary-card ${totalPenalty > 0 ? 'has-penalty' : 'no-penalty'}`}
+          role="region"
+          aria-label="Total penalty for this semester"
+        >
+          <div className="penalty-summary-header">
+            <div className="penalty-semester-meta">
+              <span className="penalty-semester-badge">
+                <CalendarRange size={13} aria-hidden="true" />
+                <span>{semesterTitle || 'This Semester'}</span>
+              </span>
+              {isPenaltyFromCache && (
+                <span className="penalty-cache-note">(saved copy)</span>
+              )}
+            </div>
+            <span className="penalty-period-range">
+              {formatHistoryDate(penaltySummary.period_start)} &ndash; {formatHistoryDate(penaltySummary.period_end)}
+            </span>
+          </div>
+
+          <div className="penalty-summary-body">
+            <div className="penalty-total-block">
+              <span className="penalty-total-label">
+                <Coins size={14} aria-hidden="true" />
+                Total Penalty
+              </span>
+              <span className="penalty-total-value" aria-live="polite">
+                {formatPeso(totalPenalty)}
+              </span>
+              <span className="penalty-total-hint">
+                {totalPenalty > 0
+                  ? 'Settle with the finance office to avoid clearance holds.'
+                  : "You're all clear — no penalties this semester."}
+              </span>
+            </div>
+
+            <div className="penalty-stats-grid" role="list" aria-label="Penalty breakdown">
+              <div className="penalty-stat penalty-stat-absent" role="listitem">
+                <XCircle size={15} aria-hidden="true" />
+                <span className="penalty-stat-value">{penaltySummary.absent_count}</span>
+                <span className="penalty-stat-label">Absences</span>
+              </div>
+              <div className="penalty-stat penalty-stat-late" role="listitem">
+                <AlertCircle size={15} aria-hidden="true" />
+                <span className="penalty-stat-value">{penaltySummary.late_count}</span>
+                <span className="penalty-stat-label">Lates</span>
+              </div>
+              <div className="penalty-stat penalty-stat-clean" role="listitem">
+                <CheckCircle2 size={15} aria-hidden="true" />
+                <span className="penalty-stat-value">{penaltySummary.recorded_sessions_count}</span>
+                <span className="penalty-stat-label">On Time</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {/* Offline Cached Indicator Banner */}
       {(isFromCache || isOffline) && !isPageUncachedOffline && records.length > 0 && (
         <div className="today-offline-indicator" role="status" aria-live="polite">
           <div className="offline-indicator-left">
             <CloudOff size={14} className="offline-indicator-icon" aria-hidden="true" />
-            <span className="offline-indicator-text">Offline — showing cached page</span>
+            <span className="offline-indicator-text">You're offline &mdash; showing records saved on this device</span>
           </div>
           {cacheTimestamp && (
             <span className="offline-indicator-time">
@@ -337,7 +492,11 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
 
       {/* State 1: Initial Skeleton Loading State */}
       {isLoadingInitial && (
-        <div className="history-skeleton-container" aria-busy="true" aria-label="Loading attendance history">
+        <div className="history-skeleton-container" aria-busy="true" aria-label="Loading your attendance history">
+          <p className="loading-caption">
+            <RotateCw size={13} className="spin-animation" aria-hidden="true" />
+            Loading your attendance&hellip;
+          </p>
           <div className="skeleton-card">
             <div className="skeleton-line skeleton-header-badge shimmer" />
             <div className="skeleton-line skeleton-title shimmer" />
@@ -365,19 +524,19 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
           <div className="error-icon-wrapper">
             <AlertTriangle size={24} className="text-warning" aria-hidden="true" />
           </div>
-          <div className="error-content">
-            <h3 className="error-title">Unable to load attendance history</h3>
-            <p className="error-description">Check your connection and try again.</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleRetry}
-            disabled={isPaginating}
-            className="btn btn-primary retry-btn"
-          >
-            <RotateCw size={14} className={isPaginating ? 'spin-animation' : ''} aria-hidden="true" />
-            <span>{isPaginating ? 'Retrying...' : 'Retry'}</span>
-          </button>
+              <div className="error-content">
+                <h3 className="error-title">Unable to load attendance history</h3>
+                <p className="error-description">We couldn't reach the attendance server. Check your internet connection and try again.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRetry}
+                disabled={isPaginating}
+                className="btn btn-primary retry-btn"
+              >
+                <RotateCw size={14} className={isPaginating ? 'spin-animation' : ''} aria-hidden="true" />
+                <span>{isPaginating ? 'Retrying...' : 'Try Again'}</span>
+              </button>
         </div>
       )}
 
@@ -389,7 +548,7 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
           </div>
           <h3 className="empty-heading">This page isn't available offline</h3>
           <p className="empty-subtext">
-            Page {page} has not been downloaded to this device yet. Reconnect to the internet to load and view past attendance records.
+            These records haven't been saved on this device yet. Reconnect to the internet to view them. Pages you've opened before are saved automatically.
           </p>
           <div className="history-uncached-actions">
             {page > 1 && (
@@ -398,7 +557,7 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
                 onClick={() => fetchPage(1, false)}
                 className="btn btn-secondary empty-refresh-btn"
               >
-                <span>Return to Page 1</span>
+                <span>Back to First Page</span>
               </button>
             )}
           </div>
@@ -411,9 +570,9 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
           <div className="empty-icon-halo">
             <History size={28} className="text-accent" aria-hidden="true" />
           </div>
-          <h3 className="empty-heading">No attendance records yet</h3>
+          <h3 className="empty-heading">No past sessions yet</h3>
           <p className="empty-subtext">
-            When you participate in attendance sessions, your historical logs and time stamps will appear here.
+            Sessions you attended &mdash; and those scheduled for you that you missed &mdash; will appear here so you can track penalties.
           </p>
           <button
             type="button"
@@ -446,6 +605,9 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
               const startTimeFormatted = formatScheduleTime(record.start_time);
               const endTimeFormatted = formatScheduleTime(record.end_time);
               const hasSchedule = startTimeFormatted || endTimeFormatted;
+              const penaltyLabel = describePenalty(record);
+              const isMissedSession = Boolean(record.is_unattended) ||
+                (!record.time_in && !record.time_out && record.portal_status === 'Absent');
 
               return (
                 <article key={record.session_id} className="card history-item-card">
@@ -461,6 +623,7 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
                       timeOut={record.time_out}
                       isLate={record.is_late}
                       lateLabel={record.late_label}
+                      showHelp={false}
                     />
                   </div>
 
@@ -485,6 +648,13 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
                       </div>
                     )}
 
+                    {/* Missed-session explainer for targeted sessions with no scan */}
+                    {isMissedSession && (
+                      <p className="history-missed-note" role="note">
+                        You were included in this session but no scan was recorded for you.
+                      </p>
+                    )}
+
                     {/* Description if provided */}
                     {record.session_description && (
                       <p className="history-description-text">{record.session_description}</p>
@@ -496,6 +666,15 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
                     timeIn={record.time_in}
                     timeOut={record.time_out}
                   />
+
+                  {/* Penalty chip for this session */}
+                  {penaltyLabel && (
+                    <div className="history-penalty-row" role="note" aria-label={`Penalty for this session: ${formatPeso(record.penalty_php)} (${penaltyLabel})`}>
+                      <Coins size={13} aria-hidden="true" />
+                      <span className="history-penalty-amount">{formatPeso(record.penalty_php)}</span>
+                      <span className="history-penalty-reason">&bull; {penaltyLabel}</span>
+                    </div>
+                  )}
 
                   {/* Report Discrepancy Action */}
                   {onReportIssue && (
@@ -535,13 +714,28 @@ export const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({
               <span>Previous</span>
             </button>
 
+            <div className="pagination-size-group">
+              <label htmlFor="history-page-size" className="sr-only">Records per page</label>
+              <select
+                id="history-page-size"
+                className="page-size-select"
+                value={pageSize}
+                onChange={handlePageSizeChange}
+                disabled={isLoadingInitial || isPaginating}
+                aria-label="Records per page"
+              >
+                <option value={5}>1&ndash;5</option>
+                <option value={10}>1&ndash;10</option>
+              </select>
+            </div>
+
             <div className="pagination-info" role="status" aria-live="polite">
               <span className="pagination-page-label">
                 Page <strong>{page}</strong> of <strong>{totalPages}</strong>
               </span>
               {totalCount > 0 && (
                 <span className="pagination-range-subtext">
-                  Showing {rangeStart}–{rangeEnd} of {totalCount}
+                  Showing {rangeStart}&ndash;{rangeEnd} of {totalCount}
                 </span>
               )}
             </div>

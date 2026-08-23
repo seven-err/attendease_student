@@ -5,6 +5,7 @@ import type {
   GetAttendanceHistoryResponse,
   ReportIssueResponse,
   DestroySessionResponse,
+  GetSemesterPenaltyResponse,
   IssueType,
 } from '../types/portal';
 
@@ -336,3 +337,37 @@ export async function destroyStudentSession(
 }
 
 
+
+/**
+ * Fetches the student's cumulative attendance penalty totals for the current
+ * semester (absences, lates, total PHP penalty).
+ */
+export async function getSemesterPenaltySummary(
+  sessionToken: string
+): Promise<GetSemesterPenaltyResponse> {
+  try {
+    if (!sessionToken || sessionToken.length !== 64) {
+      return { status: 'session_expired' };
+    }
+
+    const { data, error } = await withApiTimeout(
+      supabase.rpc('student_portal_get_semester_penalty_summary', {
+        p_session_token: sessionToken,
+      })
+    );
+
+    if (error) {
+      return { status: 'server_error', message: 'Unable to fetch your semester penalty summary. Please try again.' };
+    }
+
+    return (data as GetSemesterPenaltyResponse) || { status: 'server_error', message: 'Unable to fetch your semester penalty summary.' };
+  } catch (err: unknown) {
+    const isTimeout = err instanceof Error && err.message.includes('timed out');
+    return {
+      status: 'server_error',
+      message: isTimeout
+        ? 'Penalty summary request timed out. Please check your network.'
+        : 'Network connection issue. Please check your connection.',
+    };
+  }
+}

@@ -94,11 +94,7 @@ async function runCcsDiverseQrVerification() {
   const qrScannerSrc = readFileSync('src/components/auth/QRScanner.tsx', 'utf8');
   assert(qrScannerSrc.includes('normalizeScannedQr'), 'QRScanner uses normalizeScannedQr on decoded camera frames');
   assert(!qrScannerSrc.includes('cleanToken.length === 64'), 'QRScanner has zero 64-char length restrictions');
-
-  const manualInputSrc = readFileSync('src/components/auth/ManualInput.tsx', 'utf8');
-  assert(manualInputSrc.includes('normalizeScannedQr'), 'ManualInput uses normalizeScannedQr on submitted text');
-
-  const apiSrc = readFileSync('src/lib/api.ts', 'utf8');
+const apiSrc = readFileSync('src/lib/api.ts', 'utf8');
   assert(apiSrc.includes('normalizeScannedQr'), 'api.ts createStudentSession uses normalizeScannedQr');
 
   console.log('\n--- 4. Invalid Token Rejection ---');

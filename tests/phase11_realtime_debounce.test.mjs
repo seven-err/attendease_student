@@ -229,8 +229,8 @@ console.log('\n--- 5. Security & Zero-Trust Invariants ---');
 const storagePath = path.join(srcDir, 'lib/storage.ts');
 const storageContent = fs.readFileSync(storagePath, 'utf-8');
 
-assert(!storageContent.includes('localStorage'), '21. storage.ts strictly uses sessionStorage with zero localStorage');
-assert(storageContent.includes('sessionStorage'), '22. storage.ts uses sessionStorage for student tokens');
+assert(storageContent.includes('localStorage'), '21. storage.ts persists session identity in localStorage (long-lived sessions)');
+assert(storageContent.includes("SESSION_TOKEN_KEY = 'attendease_student_token'"), '22. storage.ts uses the stable student token storage key');
 
 console.log('\n======================================================================');
 console.log(`Phase 11 Results: ${passCount} Passed, ${failCount} Failed`);

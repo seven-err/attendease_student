@@ -146,7 +146,7 @@ async function runTests() {
   }
   assert(!hasServiceRole, 'Zero Service-Role Key references across client code');
 
-  // Check 2: Zero localStorage references (strict sessionStorage-only)
+  // Check 2: Session token persisted in localStorage (long-lived ~4-year portal sessions)
   let hasLocalStorage = false;
   for (const file of srcFiles) {
     const content = fs.readFileSync(file, 'utf8');
@@ -154,7 +154,7 @@ async function runTests() {
       hasLocalStorage = true;
     }
   }
-  assert(!hasLocalStorage, 'Zero localStorage references across client codebase (strict sessionStorage-only)');
+  assert(hasLocalStorage, 'Session identity persisted via localStorage (survives browser restarts)');
 
   // Check 3: Zero cookie storage
   let hasCookies = false;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { TodayAttendanceRecord, AttendanceHistoryRecord } from '../../types/portal';
-import { AttendanceStatus } from './AttendanceStatus';
+import { AttendanceStatus, getAttendanceStatusDisplay } from './AttendanceStatus';
 import { AttendanceTimeRow, formatAttendanceTime } from './AttendanceTimeRow';
 import { formatCacheTimestamp, formatTimeAgo } from '../../lib/offlineCache';
 import { getAttendanceHistory } from '../../lib/api';
@@ -8,7 +8,6 @@ import {
   RotateCw,
   Calendar,
   AlertTriangle,
-  Sparkles,
   CheckCircle2,
   Clock,
   FileQuestion,
@@ -447,29 +446,12 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
       {/* Date & Control Header */}
       <header className="today-section-header">
         <div className="today-header-titles">
-          <div className="today-date-badge">
-            <Calendar size={13} aria-hidden="true" />
-            <time dateTime={selectedDate}>
-              {formatTodayHeaderDate(selectedDate)}
-            </time>
-          </div>
           <h2 className="today-title">
             {isViewingToday ? "Today's Attendance" : isViewingPast ? 'Past Attendance' : 'Upcoming Schedule'}
           </h2>
         </div>
 
         <div className="today-header-actions">
-          {!isViewingToday && (
-            <button
-              type="button"
-              onClick={handleJumpToToday}
-              className="btn btn-secondary jump-today-btn"
-              aria-label="Return to today's schedule"
-            >
-              <ArrowLeft size={13} aria-hidden="true" />
-              <span>Today</span>
-            </button>
-          )}
           <button
             type="button"
             onClick={handleRefreshClick}
@@ -483,6 +465,29 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
           </button>
         </div>
       </header>
+
+      {/* Offline Stale Data Notice Banner */}
+      {(isFromCache || isOffline) && (
+        <div className="today-offline-indicator" role="status" aria-live="polite">
+          <div className="offline-indicator-left">
+            <CloudOff size={14} className="offline-indicator-icon" aria-hidden="true" />
+            <span className="offline-indicator-text">Offline — showing cached data</span>
+          </div>
+          {cacheTimestamp && (
+            <span className="offline-indicator-time">
+              Last updated: {formatCacheTimestamp(cacheTimestamp)} ({formatTimeAgo(cacheTimestamp)})
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Transient Offline Refresh Hint */}
+      {offlineNotice && (
+        <div className="offline-transient-toast" role="alert">
+          <WifiOff size={13} aria-hidden="true" />
+          <span>{offlineNotice}</span>
+        </div>
+      )}
 
       {/* Week Summary Calendar Card (with Expandable Month Selector) */}
       <section className="card today-calendar-card" role="region" aria-label="Attendance Calendar Summary">
@@ -502,7 +507,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                 aria-label="Expand to select month and date in detail"
               >
                 <CalendarDays size={13} aria-hidden="true" />
-                <span>Select Month / Date</span>
+                <span>Pick a Month</span>
                 <ChevronDown size={14} aria-hidden="true" />
               </button>
             </>
@@ -568,7 +573,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                 onClick={() => setCalendarViewMode('week')}
                 aria-label="Collapse to week summary view"
               >
-                <span>Week Summary</span>
+                <span>This Week</span>
                 <ChevronUp size={14} aria-hidden="true" />
               </button>
             </>
@@ -642,35 +647,12 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
         <div className="calendar-selected-footer">
           <div className="selected-date-meta">
             <span className="selected-date-title">{formatContextualDate(selectedDate)}</span>
-            {isViewingToday && <span className="badge badge-success">Today's Live View</span>}
-            {isViewingPast && <span className="badge badge-neutral">Reviewing Past Date</span>}
-            {isViewingUpcoming && <span className="badge badge-info">Advance Upcoming View</span>}
+            {isViewingToday && <span className="badge badge-success">Today</span>}
+            {isViewingPast && <span className="badge badge-neutral">Past Date</span>}
+            {isViewingUpcoming && <span className="badge badge-info">Upcoming</span>}
           </div>
         </div>
       </section>
-
-      {/* Offline Stale Data Notice Banner */}
-      {(isFromCache || isOffline) && (
-        <div className="today-offline-indicator" role="status" aria-live="polite">
-          <div className="offline-indicator-left">
-            <CloudOff size={14} className="offline-indicator-icon" aria-hidden="true" />
-            <span className="offline-indicator-text">Offline — showing cached data</span>
-          </div>
-          {cacheTimestamp && (
-            <span className="offline-indicator-time">
-              Last updated: {formatCacheTimestamp(cacheTimestamp)} ({formatTimeAgo(cacheTimestamp)})
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Transient Offline Refresh Hint */}
-      {offlineNotice && (
-        <div className="offline-transient-toast" role="alert">
-          <WifiOff size={13} aria-hidden="true" />
-          <span>{offlineNotice}</span>
-        </div>
-      )}
 
       {/* Case 1: Today's Live Attendance View */}
       {isViewingToday && (
@@ -706,7 +688,11 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
 
           {/* State 1: Initial Loading Skeleton State */}
           {isLoading && (
-            <div className="today-skeleton-container" aria-busy="true" aria-label="Loading attendance records">
+            <div className="today-skeleton-container" aria-busy="true" aria-label="Loading your attendance">
+              <p className="loading-caption">
+                <RotateCw size={13} className="spin-animation" aria-hidden="true" />
+                Loading your attendance&hellip;
+              </p>
               <div className="skeleton-card">
                 <div className="skeleton-line skeleton-title shimmer" />
                 <div className="skeleton-line skeleton-subtitle shimmer" />
@@ -734,7 +720,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
               </div>
               <div className="error-content">
                 <h3 className="error-title">Unable to load today's attendance</h3>
-                <p className="error-description">Check your connection and try again.</p>
+                <p className="error-description">We couldn't reach the attendance server. Check your internet connection and try again.</p>
               </div>
               <button
                 type="button"
@@ -743,7 +729,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                 className="btn btn-primary retry-btn"
               >
                 <RotateCw size={14} className={isRefreshing ? 'spin-animation' : ''} aria-hidden="true" />
-                <span>{isRefreshing ? 'Retrying...' : 'Retry'}</span>
+                <span>{isRefreshing ? 'Retrying...' : 'Try Again'}</span>
               </button>
             </div>
           )}
@@ -756,35 +742,11 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
               </div>
               <h3 className="empty-heading">You're offline</h3>
               <p className="empty-subtext">
-                Today's attendance is not available on this device yet. Connect to the internet to fetch your latest records.
+                Today's attendance hasn't been saved on this device yet. Connect to the internet to see your latest records.
               </p>
               <div className="offline-empty-badge">
-                <span>Offline Read Mode</span>
+                <span>Showing saved information only</span>
               </div>
-            </div>
-          )}
-
-          {/* State 3B: Normal Empty State */}
-          {!isLoading && !error && visibleRecords.length === 0 && !isOffline && (
-            <div className="card today-empty-card" role="region" aria-label="No attendance records">
-              <div className="empty-icon-halo">
-                <Sparkles size={28} className="text-accent" aria-hidden="true" />
-              </div>
-              <h3 className="empty-heading">No attendance scheduled</h3>
-              <p className="empty-subtext">
-                {effectiveRole === 'employee'
-                  ? `No employee attendance sessions are scheduled for ${effectiveDept ? `the ${effectiveDept} department` : 'your department'} today. When you scan at an attendance station, your records will appear here.`
-                  : `No student attendance sessions are scheduled for ${effectiveDept ? `the ${effectiveDept} department` : 'your department'} today. When you scan at an attendance station, your records will appear here.`}
-              </p>
-              <button
-                type="button"
-                onClick={handleRefreshClick}
-                disabled={isRefreshing}
-                className="btn btn-secondary empty-refresh-btn"
-              >
-                <RotateCw size={14} className={isRefreshing ? 'spin-animation' : ''} aria-hidden="true" />
-                <span>Check for updates</span>
-              </button>
             </div>
           )}
 
@@ -796,6 +758,11 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                 const startTimeFormatted = formatScheduleTime(record.start_time || record.starts_at);
                 const endTimeFormatted = formatScheduleTime(record.end_time || record.ends_at);
                 const hasSchedule = startTimeFormatted || endTimeFormatted;
+                const { helpText: statusHelpText } = getAttendanceStatusDisplay(
+                  record.portal_status,
+                  record.time_in || record.actual_time_in,
+                  record.time_out || record.actual_time_out
+                );
 
                 return (
                   <article key={record.session_id} className="card attendance-session-card">
@@ -813,8 +780,13 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                         timeOut={record.time_out || record.actual_time_out}
                         isLate={record.is_late}
                         lateLabel={record.late_label}
+                        showHelp={false}
                       />
                     </div>
+
+                    {statusHelpText && (
+                      <p className="session-description-text status-help-text">{statusHelpText}</p>
+                    )}
 
                     {hasSchedule && (
                       <div className="session-schedule-meta">
@@ -864,6 +836,25 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
         </>
       )}
 
+      {/* Today Empty State (below the calendar, same placement as "Nothing scheduled") */}
+      {isViewingToday && !isLoading && !error && visibleRecords.length === 0 && !isOffline && (
+        <div className="card today-empty-card today-empty-card--quiet" role="region" aria-label="No attendance records">
+          <h3 className="empty-heading">You're not marked present yet</h3>
+          <p className="empty-subtext">
+            There are no attendance sessions for you today. Once you scan at an attendance station, your record will appear here.
+          </p>
+          <button
+            type="button"
+            onClick={handleRefreshClick}
+            disabled={isRefreshing}
+            className="btn btn-secondary empty-refresh-btn"
+          >
+            <RotateCw size={14} className={isRefreshing ? 'spin-animation' : ''} aria-hidden="true" />
+            <span>Check for updates</span>
+          </button>
+        </div>
+      )}
+
       {/* Case 2: Past Attendance Review View */}
       {isViewingPast && (
         <div className="past-attendance-review-container">
@@ -891,6 +882,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                         timeOut={record.time_out}
                         isLate={record.is_late}
                         lateLabel={record.late_label}
+                        showHelp={false}
                       />
                     </div>
 
@@ -940,9 +932,9 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
               <div className="empty-icon-halo">
                 <Calendar size={28} className="text-muted" aria-hidden="true" />
               </div>
-              <h3 className="empty-heading">No Attendance Logs</h3>
+              <h3 className="empty-heading">No attendance on this day</h3>
               <p className="empty-subtext">
-                No attendance scans or sessions were recorded for {formatContextualDate(selectedDate)}.
+                Nothing was recorded for {formatContextualDate(selectedDate)}.
               </p>
               <button
                 type="button"
@@ -950,7 +942,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                 className="btn btn-secondary empty-refresh-btn"
               >
                 <ArrowLeft size={14} aria-hidden="true" />
-                <span>Return to Today</span>
+                <span>Back to Today</span>
               </button>
             </div>
           )}
@@ -996,7 +988,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                     )}
 
                     <div className="upcoming-info-chip">
-                      <span>Scheduled session. Check in on {formatTodayHeaderDate(selectedDate)} via QR Scanner.</span>
+                      <span>Scan the attendance QR code at the venue to record your attendance on this day.</span>
                     </div>
                   </article>
                 );
@@ -1004,12 +996,9 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
             </div>
           ) : (
             <div className="card today-empty-card" role="region" aria-label="No upcoming attendance scheduled">
-              <div className="empty-icon-halo">
-                <Sparkles size={28} className="text-accent" aria-hidden="true" />
-              </div>
-              <h3 className="empty-heading">No Sessions Scheduled</h3>
+              <h3 className="empty-heading">Nothing scheduled</h3>
               <p className="empty-subtext">
-                No attendance sessions are currently scheduled for {formatContextualDate(selectedDate)}. University assemblies, department lectures, and events will appear here in advance once published.
+                There are no attendance sessions on {formatContextualDate(selectedDate)}. Scheduled classes and events will appear here.
               </p>
               <button
                 type="button"
@@ -1017,7 +1006,7 @@ export const TodayAttendance: React.FC<TodayAttendanceProps> = ({
                 className="btn btn-secondary empty-refresh-btn"
               >
                 <ArrowLeft size={14} aria-hidden="true" />
-                <span>Return to Today</span>
+                <span>Back to Today</span>
               </button>
             </div>
           )}
