@@ -412,6 +412,13 @@ button {
   gap: clamp(12px, 2.5vw, 18px);
 }
 
+/* Content cards must keep their natural height: with overflow hidden on
+   cards, flexbox would otherwise squash (and clip) them on short viewports
+   instead of letting .app-main scroll */
+.app-main > * {
+  flex-shrink: 0;
+}
+
 /* Custom Sleek Scrollbar */
 .app-main::-webkit-scrollbar,
 .login-view-container::-webkit-scrollbar {
@@ -473,8 +480,11 @@ button {
   padding: 14px;
   box-shadow: var(--shadow-card);
   transition: var(--transition-default);
-}.profile-card {
+}
+
+.profile-card {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: clamp(10px, 2.5vw, 16px);
   background: linear-gradient(135deg, #ffffff 0%, var(--colors-surface-tint) 100%);
@@ -596,6 +606,7 @@ button {
   margin: 0;
   margin-left: auto;
   flex-shrink: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -745,6 +756,78 @@ button {
   margin: 6px 0 0;
   font-size: var(--font-size-xs);
   color: var(--colors-muted-text);
+}
+
+/* =============================================================================
+   Floating PWA Install Button
+   ============================================================================= */
+.install-fab {
+  position: fixed;
+  right: 14px;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  animation: install-fab-rise-in 0.25s ease;
+}
+
+@keyframes install-fab-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.install-fab-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 15px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.2px;
+  background: linear-gradient(135deg, var(--colors-primary) 0%, var(--colors-danger-dark) 100%);
+  border: none;
+  border-radius: var(--radius-full);
+  box-shadow: 0 6px 18px rgba(139, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.install-fab-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(139, 0, 0, 0.42);
+}
+
+.install-fab-action:active {
+  transform: scale(0.97);
+}
+
+.install-fab-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--colors-muted-text);
+  background-color: var(--colors-card);
+  border: 1px solid var(--colors-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.install-fab-dismiss:hover {
+  background-color: var(--colors-primary-light);
+  color: var(--colors-primary);
 }
 
 /* =============================================================================
@@ -3649,6 +3732,44 @@ select,
     align-items: center;
     justify-content: center;
     padding: 16px 0;
+  }
+
+  /* Wide screens: scale the profile card up so it stays balanced
+     instead of stretching thin across the wider container */
+  .profile-card {
+    padding: 18px 22px;
+    gap: 20px;
+  }
+
+  .profile-avatar {
+    width: 56px;
+    height: 56px;
+  }
+
+  .profile-avatar svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .profile-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .profile-name {
+    font-size: var(--font-size-xl);
+  }
+
+  .profile-greeting,
+  .profile-meta {
+    font-size: var(--font-size-sm);
+  }
+
+  .profile-qr-frame svg {
+    width: 78px;
+    height: 78px;
   }
 
   .app-container {

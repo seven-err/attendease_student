@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { useStudentSession } from './hooks/useStudentSession';
 import { useNetworkState } from './hooks/useNetworkState';
 import { LoginView } from './views/LoginView';
+import { InstallAppButton } from './components/install/InstallAppButton';
 import { TodayAttendance } from './components/attendance/TodayAttendance';
 import { AttendanceHistory } from './components/attendance/AttendanceHistory';
 import { IssueReport, SessionContextInfo } from './components/issues/IssueReport';
@@ -242,6 +244,7 @@ export function App() {
   if (!isAuthenticated) {
     return (
       <div className="app-container">
+        <InstallAppButton />
         <LoginView
           onLogin={login}
           isLoading={isLoading}
@@ -448,41 +451,49 @@ export function App() {
         )}
       </nav>
 
-      {/* Enlarged Personal QR Code Modal (click backdrop to dismiss) */}
-      {isQrModalOpen && qrToken && (
-        <div
-          className="qr-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Your personal QR code enlarged"
-          onClick={() => setIsQrModalOpen(false)}
-        >
-          <div className="qr-modal-card" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="qr-modal-close-btn"
-              onClick={() => setIsQrModalOpen(false)}
-              aria-label="Close enlarged QR code"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-            <div className="qr-modal-code">
-              <QRCode value={qrToken} size={240} bgColor="#ffffff" fgColor="#18181b" level="M" />
+      {/* Floating PWA Install Button (only when app not installed) */}
+      <InstallAppButton />
+
+      {/* Enlarged Personal QR Code Modal (click backdrop to dismiss).
+          Rendered via portal to document.body so it is never affected by
+          ancestor overflow/clipping or missing layout context. */}
+      {isQrModalOpen &&
+        qrToken &&
+        createPortal(
+          <div
+            className="qr-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Your personal QR code enlarged"
+            onClick={() => setIsQrModalOpen(false)}
+          >
+            <div className="qr-modal-card" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className="qr-modal-close-btn"
+                onClick={() => setIsQrModalOpen(false)}
+                aria-label="Close enlarged QR code"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+              <div className="qr-modal-code">
+                <QRCode value={qrToken} size={240} bgColor="#ffffff" fgColor="#18181b" level="M" />
+              </div>
+              {profile && (
+                <>
+                  <h2 className="qr-modal-name">{profile.full_name}</h2>
+                  <div className="qr-modal-meta">
+                    {profile.department && <span>{profile.department}</span>}
+                    {profile.course && <span>{profile.course}</span>}
+                    {profile.year_level && <span>{profile.year_level}</span>}
+                  </div>
+                </>
+              )}
+              <p className="qr-modal-hint">Present this code at the attendance scanner</p>
             </div>
-            {profile && (
-              <>
-                <h2 className="qr-modal-name">{profile.full_name}</h2>
-                <div className="qr-modal-meta">
-                  {profile.department && <span>{profile.department}</span>}
-                  {profile.course && <span>{profile.course}</span>}
-                  {profile.year_level && <span>{profile.year_level}</span>}
-                </div>
-              </>
-            )}
-            <p className="qr-modal-hint">Present this code at the attendance scanner</p>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
